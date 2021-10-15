@@ -1,0 +1,316 @@
+---
+title: "Explications STAN"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::readthedown:
+    self_contained: true
+    thumbnails: true
+    lightbox: true
+    gallery: false
+    highlight: tango
+    code_folding: "hide"
+  html_document:
+    code_folding: "hide"
+    latex_engine: xelatex
+---
+
+
+
+
+Usefull librarys.
+
+```{r, message=FALSE, warning=FALSE}
+
+library(sjPlot) # table functions
+library(sjmisc) # sample data
+library(lme4) # fitting model
+library(sjstats)
+library(rstanarm)
+library(brms)  # for models
+library(bayesplot)
+library(bayestestR)
+library(ggplot2)
+library(tidyverse)
+library(tidybayes)
+library(modelr)
+library(ggeffects)
+
+load("save/save_Datas.RData")
+
+```
+
+***
+A general approach to **statistical inference** tends to rely less on inference about a particular hypothesis and more on parameter estimation. The basic idea is to fit a **model** whose parameters describe substantive hypotheses about the generating sources of the dataset, and then to interpret these parameters based on their magnitude and the precision of the estimate. The key tool for this kind of estimation is not tests like the t-test or the chi-squared. Instead, it's typically some variant of regression, usually mixed effects models.   
+ 
+ 
+These models (also known as hierarchical linear models) let you estimate sources of **random variation** ("random effects") in the data across various grouping factors. For example, in a reaction time experiment some participants will be faster or slower (and so all data from those particular individuals will tend to be faster or slower in a correlated way). Similarly, some stimulus items will be faster or slower and so all the data from these groupings will vary. The lme4 package in R was a game-changer for using these models (in a **frequentist** paradigm).   
+ 
+ 
+How do you reason about the relationship between your data and your hypotheses ? **Bayesian** inference provides a way to make normative inferences under uncertainty. We are interested in knowing the probability of some hypothesis given the data we observe.    
+Bayesian statistical framework offers unique advantages, for example in terms of inter- pretability of estimates and the flexibility of fitting.   
+ 
+ 
+Enter Bayesian methods. For several years, it's been possible to fit Bayesian regression models using **Stan**, a powerful probabilistic programming language that interfaces with R. Stan, building on BUGS before it, has put Bayesian regression within reach for someone who knows how to write these models (and interpret the outputs). But in practice, when you could fit an lmer in one line of code and five seconds, it seemed like a bit of a trial to hew the model by hand out of solid Stan code (which looks a little like C: you have to declare your variable types, etc.).     
+
+# Modelisation
+
+Bayesian inference for GLMs with group-specific coefficients that have unknown covariance matrices with flexible priors.    
+The **stan_glmer** function is similar in syntax to glmer but rather than performing maximum likelihood estimation of generalized linear models, Bayesian estimation is performed via MCMC. The Bayesian model adds priors on the regression coefficients and priors on the terms of a decomposition of the covariance matrices of the group-specific parameters.    
+We build all possible models.     
+This will allow us to have an estimation of the posterior distributions.    
+We have to save the diagnostics files for futur models comparaison.    
+
+
+```{r, warning=FALSE, fig.align='center', message = FALSE}
+load("save/save_workspace_test_STAN_2.RData")
+
+# model.stan.00 <- stan_glmer(Ratio~ 1 + (1+Window|Patient) + (0+Stade|Patient), 
+#                             data = filter(Datas, Window != "Midle", Window != "Last"),
+#                             diagnostic_file = "~/Datas/R/Baysian/test_STAN/diagnostic_00.csv")
+# model.stan.01 <- update(model.stan.01, formula = . ~ Window + (1+Window|Patient) + (0+Stade|Patient),
+#                             diagnostic_file = "~/Datas/R/Baysian/test_STAN/diagnostic_01.csv")
+# model.stan.02 <- update(model.stan.01, formula = . ~ Stade + (1+Window|Patient) + (0+Stade|Patient),
+#                             diagnostic_file = "~/Datas/R/Baysian/test_STAN/diagnostic_02.csv")
+# model.stan.03 <- update(model.stan.01, formula = . ~ Eveil + (1+Window|Patient) + (0+Stade|Patient),
+#                             diagnostic_file = "~/Datas/R/Baysian/test_STAN/diagnostic_03.csv")
+# model.stan.04 <- update(model.stan.01, formula = . ~ Window + Stade + (1+Window|Patient) + (0+Stade|Patient),
+#                             diagnostic_file = "~/Datas/R/Baysian/test_STAN/diagnostic_04.csv")
+# model.stan.05 <- update(model.stan.01, formula = . ~ Window + Eveil + (1+Window|Patient) + (0+Stade|Patient),
+#                             diagnostic_file = "~/Datas/R/Baysian/test_STAN/diagnostic_05.csv")
+# model.stan.06 <- update(model.stan.01, formula = . ~ Eveil  + Stade + (1+Window|Patient) + (0+Stade|Patient),
+#                             diagnostic_file = "~/Datas/R/Baysian/test_STAN/diagnostic_06.csv")
+# model.stan.07 <- update(model.stan.01, formula = . ~ Window * Stade + (1+Window|Patient) + (0+Stade|Patient),
+#                             diagnostic_file = "~/Datas/R/Baysian/test_STAN/diagnostic_07.csv")
+# model.stan.08 <- update(model.stan.01, formula = . ~ Window * Eveil + (1+Window|Patient) + (0+Stade|Patient),
+#                             diagnostic_file = "~/Datas/R/Baysian/test_STAN/diagnostic_08.csv")
+# model.stan.09 <- update(model.stan.01, formula = . ~ Eveil  * Stade + (1+Window|Patient) + (0+Stade|Patient),
+#                             diagnostic_file = "~/Datas/R/Baysian/test_STAN/diagnostic_09.csv")
+# model.stan.10 <- update(model.stan.01, formula = . ~ Window * Stade * Eveil + (1+Window|Patient) + (0+Stade|Patient),
+#                             diagnostic_file = "~/Datas/R/Baysian/test_STAN/diagnostic_10.csv")
+# 
+# save(model.stan.00, model.stan.01, model.stan.02, model.stan.03, model.stan.04, model.stan.05, model.stan.06, model.stan.07, model.stan.08, model.stan.09, model.stan.10,
+#      file = "~/Datas/R/Baysian/test_STAN/save_workspace_test_STAN_2.RData")
+
+model.stan.10
+```
+
+Lorsqu'on affiche le modèle.   
+La colonne **Median** est le "Bayesian point estimates" qui est représenté par la médiane de la posterieur (similaire au maximum likelihood estimates).    
+La colonne **MAD** (Median Absolute Deviation) est une estimation de la déviation standard de la posterieur.    
+
+
+  
+On peut obtenir l'interval d'incertitude Bayesienne pour chaque Beta. Il semble que ca soit aussi ce qu'on appelle HDI (highest density interval).    
+
+```{r, warning=FALSE, fig.align='center', message = FALSE}
+posterior_interval(model.stan.10, prob = 0.95)
+```
+
+Les **b** et **sigma** sont les estimations des facteurs aléatoirs.   
+  
+Dans cette exemple on peut donc dire que le Beta de WindowVeille est compris entre -0.89 et -0.3 avec une probabilité de 95%. On peut dire qu'il y a probabilité de 0% de voir cette valeur positive. Les analyse fréquentistes ne permettent jamais de dire ca.   
+  
+
+Pour explorer les caractéristiques du modèles, il est posible d'examiner les priors.   
+```{r, warning=FALSE, fig.align='center', message = FALSE}
+prior_summary(model.stan.10)
+prior_summary(model.stan.10)$prior$location
+```
+
+**Il me reste a explorer comment changer les priors.**
+
+# Qualité des modèles
+
+
+Avec la fonction:    
+launch_shinystan(model.stan.10)   
+  
+Il est possible d'explorer et diagnostiquer la qualité des modèles via une intreface graphique.   
+  
+
+Pour ressortir les valeurs de R2 (goodness of fit) avec leur erreur standard.   
+  
+```{r, warning=FALSE, fig.align='center', message = FALSE}
+r2(model.stan.01)
+```
+
+Pour connaitre le meilleur des modèles créés, on test **la qualité des prédictions**. Pour ca on utilise la méthode leave-one-out (loo).   
+
+```{r, warning=FALSE, fig.align='center', message = FALSE}
+load("save/save_loo_test_STAN.RData")
+
+# loo.00 <- loo(model.stan.00, cores = 2)
+# loo.01 <- loo(model.stan.01, cores = 2)
+# loo.02 <- loo(model.stan.02, cores = 2)
+# loo.03 <- loo(model.stan.03, cores = 2)
+# loo.04 <- loo(model.stan.04, cores = 2)
+# loo.05 <- loo(model.stan.05, cores = 2)
+# loo.06 <- loo(model.stan.06, cores = 2)
+# loo.07 <- loo(model.stan.07, cores = 2)
+# loo.08 <- loo(model.stan.08, cores = 2)
+# loo.09 <- loo(model.stan.09, cores = 2)
+# loo.10 <- loo(model.stan.10, cores = 2)
+# save(loo.00, loo.01, loo.02, loo.03, loo.04, loo.05, loo.06, loo.07, loo.08, loo.09, loo.10,
+#      file = "~/Datas/R/Baysian/test_STAN/save_loo_test_STAN.RData")
+
+```
+
+On commence par vérifier que les postérieurs ne sont pas trop sensibles à une valeur en prticulier (>0.5);    
+
+```{r, warning=FALSE, fig.align='center', message = FALSE}
+par(mfrow = c(3,4))
+plot(loo.00, label_points = TRUE)
+plot(loo.01, label_points = TRUE)
+plot(loo.02, label_points = TRUE)
+plot(loo.03, label_points = TRUE)
+plot(loo.04, label_points = TRUE)
+plot(loo.05, label_points = TRUE)
+plot(loo.06, label_points = TRUE)
+plot(loo.07, label_points = TRUE)
+plot(loo.08, label_points = TRUE)
+plot(loo.09, label_points = TRUE)
+plot(loo.10, label_points = TRUE)
+```
+
+On voit qu'il n'y a aucune outlier pour ces deux modèles. On peut donc comparer les modèles sans que cette comparaison soit biaisée par ces outliers.   
+
+
+```{r, warning=FALSE, fig.align='center', message = FALSE}
+compare_models(loo.00, loo.01, loo.02, loo.03, loo.04, loo.05,
+               loo.06, loo.07, loo.08, loo.09, loo.10)
+```
+
+Ici est affiché l'Expected Log Pointwise Deviance (**elpd**). Le modèle ayant la plus petite elpd est le meilleur. **LOOIC** est l'équivalent de l'AIC en fréquentiste, la complexisté du modèle est prise en compte.    
+
+
+```{r, warning=FALSE, fig.align='center', message = FALSE}
+# bayesfactor_models(model.stan.01, model.stan.02)
+# 
+# bayesfactor_models(model.stan.01, model.stan.02, model.stan.03, model.stan.04, model.stan.05, model.stan.06, model.stan.07, model.stan.08, model.stan.09, model.stan.10, denominator = model.stan.00)
+```
+
+# Effects size
+
+
+```{r, warning=FALSE, fig.align='center', message = FALSE}
+equivalence_test(model.stan.10)
+plot(equivalence_test(model.stan.10))
+```
+
+equi_test donne l'**effect size** (effective sample size). Interessant et rare !    
+  
+**ROP** est le pourcentage de la distribution aposteriori qui chevauche avec la région d'équivalence (sans interet). Plus le %ROP est important, moins l'effet est interessant. La fonction equi_test utilise ces deux paramètres pour prendre une descision (test for practical equivalence) sur l'acceptation d'un paramètre.   
+
+L'erreur standard de Monte Carlo (**MCSE**) permet de se faire une idée de l'estimation du bruit.   
+
+Comme pour les études fréquentistes, il est difficile d'interpréter ces effets qui sont tous des contrasts par rapport à l'intercept.    
+
+
+# Post-Hoc
+
+Compute the Probability of Direction (**pd**, also known as the Maximum Probability of Effect). It can be interpreted as the probability that a parameter (described by its posterior distribution) or a difference is strictly positive or negative (whichever is the most probable).    
+This index is fairly similar (strongly correlated) to the frequentist **p-value**.   
+ 
+ 
+Bayes factors (**BF**) against the null (here is a point 0, no difference), bases on prior and posterior samples of a single parameter. This Bayes factor indicates the degree by which the mass of the posterior distribution has shifted further away from or closer to the null value(s) (relative to the prior distribution), thus indicating if the null value has become less or more likely given the observed data.    
+ 
+ 
+Classical **Z.Chisq** (Wald test) for testing the global hypothesis H_0.    
+A slightly more powerful method than the Holm method, method **free**, which takes the correlation of the model parameters into account.    
+
+
+```{r, warning=FALSE, fig.align='center', message = FALSE}
+plot(ggpredict(model.stan.10 , terms = c("Stade","Eveil",  "Window")))
+
+mcmc_areas(as.array(model.stan.10), prob = 0.95, pars = c("WindowOnset:StadeSP:EveilMicro", "(Intercept)") )
+
+library(emmeans)
+emm <- emmeans(model.stan.10, "Window", by = c("Stade", "Eveil"))
+
+library(multcomp)
+summary(as.glht(update(pairs(emm), by = NULL)), test = adjusted("free"))
+
+sum.emm <- summary(as.glht(update(pairs(emm), by = NULL)), test = adjusted("free"))
+
+
+
+
+BF.emm <- bayesfactor_parameters(pairs(emm), prior = model.stan.10)
+
+as.data.frame(p_direction(pairs(emm))) %>%
+  left_join(BF.emm) %>%
+  mutate(BF = exp(log_BF),
+         BayesSign = case_when(BF > 100 ~ "***",
+                               BF > 10 & BF < 100 ~ "**",
+                               BF > 3 & BF < 10 ~ "*",
+                               BF > 1 & BF < 3 ~ ".",
+                               BF < 1 ~ ""),
+         Z.Chisq = round(sum.emm$test$tstat,4),
+         P.value    = sum.emm$test$pvalues,
+         FreqSign = case_when(P.value > 0.01 ~ "",
+                          P.value < 0.001 ~ "***",
+                          P.value > 0.001 & P.value < 0.01 ~ "**",
+                          P.value < 0.05 & P.value > 0.01 ~ "*",
+                          P.value > 0.05 & P.value < 0.1 ~ ".")) -> Tests.Pairs.Results
+
+Tests.Pairs.Results
+
+```
+
+# The p-direction: A Bayesian equivalent of the p-value?
+
+ici un papier qui dit que la **pd** (p-direction) est le meilleur candidat pour être équivalent à la **pvalue**.
+https://www.frontiersin.org/articles/10.3389/fpsyg.2019.02767/full    
+
+Basé sur des simulation, ils trouvent que la **pd** est corrélée à la **pvalue**. Ca n'est pas un équivalent conceptuel bien sur. **pd** est un index de l'effet d'existence alors que la **pvalue** est un index de l'effet de significativité.    
+
+la valeur de **pd** est un pourcentage. Cette valeur fait référence à la probabilité qu'un effet soit positif (ou négatif selon le signe de la médiane)
+il est possible de transformer la **pd** en **pvalue** :   
+
+```{r, eval=FALSE}
+library(see)
+plot(p_direction(your_Bayesian_model))
+parameters(model)
+pd_to_p(0.9880)
+
+```
+
+Pour rendre compte du manque d'effet il faut utiliser le **ROPE** ou le **BayesFactor**.    
+
+
+# Bayes Factor
+
+
+The BF should primarily be seen as a continuous measure of evidence.    
+The Bayes factor quantifies the degree to which the data warrant a change in beliefs, and it therefore represents the strength of evidence that the data provide for H0 vs H1.    
+  
+Jeffreys proposed reference values to guide the interpretation of the strength of the evidence9. These values were spaced out in exponential half steps of 10, $10^(0.5) ≈ 3$, $10^1 = 10$, $10^(1.5) ≈ 30$, etc., to be equidistant on a log scale.   
+
+Userers can judge the strength of the evidence directly from the numerical value of BF, with a BF twice as high providing evidence twice as strong. In contrast, it can be difficult to interpret an actual P value as strength of evidence, as P = 0.01 does not provide five times as much evidence as P = 0.05.    
+ 
+
+A classical power analysis can help disentangle these alternatives : evidence of absence or absence of evidence  
+(see : https://www.nature.com/articles/s41593-020-0660-4)    
+  
+There are three broad qualitative categories of Bayes factors.    
+- First, the Bayes factor may support H1 (BF > 3).   
+- Second, the Bayes factor may support H0 (BF < 0.3) : **‘evidence of absence’**  
+- Third, the Bayes factor may be near 1 and support neither of the two rival hypotheses (0.3 < BF < 3) : **‘absence of  evidence’**    
+
+When an effect is present, evidence for the presence of an effect (BF > 3) is slightly less frequent than that of the frequentist approach (P < 0.05), but not dramatically different.   
+However, as sample sizes become very large, the Bayes factor and P values diverge more dramatically: P values will become significant even for arguably irrelevantly small effect sizes, whereas the BF continues to require more relevant effect sizes     
+
+The advantage of retaining a continuous representation of evidence (like BF) was stressed by Rozeboom33:   
+“The null-hypothesis significance test treats ‘acceptance’ or ‘rejection’ of a hypothesis as though these were
+decisions one makes. But a hypothesis is not something, like a piece of pie offered for dessert, which can be accepted or rejected by a voluntary physical action. Acceptance or rejection of a hypothesis is a cognitive process, a degree of believing or disbelieving which, if rational, is not a matter of choice but determined solely by how likely it is, given the evidence, that the hypothesis is true.”    
+http://stats.org.uk/statistical-inference/Rozeboom1960.pdf     
+
+
+# Interesting Ref
+
+https://strengejacke.wordpress.com/2018/06/06/r-functions-for-bayesian-model-statistics-and-summaries-rstats-stan-brms/     
+
+https://www.frontiersin.org/articles/10.3389/fpsyg.2019.02767/full    
+
+https://easystats.github.io/bayestestR/articles/bayestestR.html    
+
